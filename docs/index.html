@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ギター チューナー</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎸 ギター チューナー</h1>
+            <p class="subtitle">マイクを許可して、ギターをチューニングしましょう</p>
+        </header>
+
+        <div class="tuner-container">
+            <div class="controls">
+                <button id="startBtn" class="btn btn-primary">マイクを開始</button>
+                <button id="stopBtn" class="btn btn-secondary" disabled>停止</button>
+            </div>
+
+            <div class="status" id="status">
+                <p>マイクを開始してください</p>
+            </div>
+
+            <div class="waveform-container">
+                <h3>音声波形</h3>
+                <canvas id="waveformCanvas"></canvas>
+                <div class="waveform-info" id="waveformInfo">音声を検出していません</div>
+            </div>
+
+            <div class="frequency-display">
+                <div class="freq-value" id="frequency">-- Hz</div>
+                <div class="note-name" id="note">--</div>
+            </div>
+
+            <div class="tuning-indicator">
+                <div class="needle-container">
+                    <div class="needle" id="needle"></div>
+                </div>
+                <div class="tuning-status" id="tuningStatus">--</div>
+            </div>
+
+            <div class="string-selector">
+                <h3>弦を選択</h3>
+                <div class="strings">
+                    <button class="string-btn" data-string="E4" data-freq="329.63">1弦 (E)</button>
+                    <button class="string-btn" data-string="B3" data-freq="246.94">2弦 (B)</button>
+                    <button class="string-btn" data-string="G3" data-freq="196.00">3弦 (G)</button>
+                    <button class="string-btn" data-string="D3" data-freq="146.83">4弦 (D)</button>
+                    <button class="string-btn" data-string="A2" data-freq="110.00">5弦 (A)</button>
+                    <button class="string-btn active" data-string="E2" data-freq="82.41">6弦 (E)</button>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>GitHub Pagesで動作するギター チューナー</p>
+        </footer>
+    </div>
+
+    <script src="tuner.js"></script>
+</body>
+</html>
+
