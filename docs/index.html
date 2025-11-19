@@ -13,7 +13,13 @@
             <p class="subtitle">マイクを許可して、ギターをチューニングしましょう</p>
         </header>
 
-        <div class="tuner-container">
+        <div class="mode-selector">
+            <button id="tunerModeBtn" class="mode-btn active">チューニング</button>
+            <button id="gameModeBtn" class="mode-btn">音当てゲーム</button>
+        </div>
+
+        <!-- チューニングモード -->
+        <div class="tuner-container" id="tunerContainer">
             <div class="controls">
                 <button id="startBtn" class="btn btn-primary">マイクを開始</button>
                 <button id="stopBtn" class="btn btn-secondary" disabled>停止</button>
@@ -51,6 +57,58 @@
                     <button class="string-btn" data-string="A2" data-freq="110.00">5弦 (A)</button>
                     <button class="string-btn active" data-string="E2" data-freq="82.41">6弦 (E)</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- 音当てゲームモード -->
+        <div class="game-container" id="gameContainer" style="display: none;">
+            <div class="game-info">
+                <div class="score-display">
+                    <div class="score-item">
+                        <span class="score-label">正解数:</span>
+                        <span class="score-value" id="correctCount">0</span>
+                    </div>
+                    <div class="score-item">
+                        <span class="score-label">問題数:</span>
+                        <span class="score-value" id="totalCount">0</span>
+                    </div>
+                    <div class="score-item">
+                        <span class="score-label">正答率:</span>
+                        <span class="score-value" id="accuracy">0%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="game-status" id="gameStatus">
+                <p>ゲームを開始してください</p>
+            </div>
+
+            <div class="game-question" id="gameQuestion">
+                <h2>問題: この弦を弾いてください</h2>
+                <div class="target-string-display" id="targetStringDisplay">--</div>
+            </div>
+
+            <div class="game-controls">
+                <button id="startGameBtn" class="btn btn-primary">ゲーム開始</button>
+                <button id="nextQuestionBtn" class="btn btn-secondary" style="display: none;">次の問題</button>
+                <button id="answerBtn" class="btn btn-success" style="display: none;">回答する</button>
+            </div>
+
+            <div class="game-answer-section" id="gameAnswerSection" style="display: none;">
+                <h3>どの弦を弾きましたか？</h3>
+                <div class="game-strings">
+                    <button class="game-string-btn" data-string="E4" data-freq="329.63">1弦 (E)</button>
+                    <button class="game-string-btn" data-string="B3" data-freq="246.94">2弦 (B)</button>
+                    <button class="game-string-btn" data-string="G3" data-freq="196.00">3弦 (G)</button>
+                    <button class="game-string-btn" data-string="D3" data-freq="146.83">4弦 (D)</button>
+                    <button class="game-string-btn" data-string="A2" data-freq="110.00">5弦 (A)</button>
+                    <button class="game-string-btn" data-string="E2" data-freq="82.41">6弦 (E)</button>
+                </div>
+            </div>
+
+            <div class="game-result" id="gameResult" style="display: none;">
+                <div class="result-message" id="resultMessage"></div>
+                <div class="detected-frequency" id="detectedFrequency"></div>
             </div>
         </div>
 

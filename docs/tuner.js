@@ -25,6 +25,16 @@ class GuitarTuner {
         this.targetFrequency = GUITAR_STRINGS[this.selectedString];
         this.canvas = null;
         this.canvasContext = null;
+        
+        // ゲームモード関連
+        this.currentMode = 'tuner'; // 'tuner' or 'game'
+        this.gameActive = false;
+        this.targetString = null;
+        this.detectedFrequency = 0;
+        this.userAnswer = null;
+        this.correctCount = 0;
+        this.totalCount = 0;
+        this.gameAnimationId = null;
 
         this.initializeElements();
         this.attachEventListeners();
@@ -41,6 +51,25 @@ class GuitarTuner {
         this.stringButtons = document.querySelectorAll('.string-btn');
         this.canvas = document.getElementById('waveformCanvas');
         this.waveformInfo = document.getElementById('waveformInfo');
+        
+        // ゲームモード用の要素
+        this.tunerModeBtn = document.getElementById('tunerModeBtn');
+        this.gameModeBtn = document.getElementById('gameModeBtn');
+        this.tunerContainer = document.getElementById('tunerContainer');
+        this.gameContainer = document.getElementById('gameContainer');
+        this.startGameBtn = document.getElementById('startGameBtn');
+        this.nextQuestionBtn = document.getElementById('nextQuestionBtn');
+        this.answerBtn = document.getElementById('answerBtn');
+        this.gameAnswerSection = document.getElementById('gameAnswerSection');
+        this.gameResult = document.getElementById('gameResult');
+        this.gameStatus = document.getElementById('gameStatus');
+        this.targetStringDisplay = document.getElementById('targetStringDisplay');
+        this.resultMessage = document.getElementById('resultMessage');
+        this.detectedFrequencyDisplay = document.getElementById('detectedFrequency');
+        this.correctCountDisplay = document.getElementById('correctCount');
+        this.totalCountDisplay = document.getElementById('totalCount');
+        this.accuracyDisplay = document.getElementById('accuracy');
+        this.gameStringButtons = document.querySelectorAll('.game-string-btn');
         
         // Canvas設定
         if (this.canvas) {
@@ -93,6 +122,46 @@ class GuitarTuner {
                 this.targetFrequency = parseFloat(btn.dataset.freq);
             });
         });
+
+        // モード切り替え
+        this.tunerModeBtn.addEventListener('click', () => this.switchMode('tuner'));
+        this.gameModeBtn.addEventListener('click', () => this.switchMode('game'));
+
+        // ゲームモードのイベント
+        this.startGameBtn.addEventListener('click', () => this.startGame());
+        this.nextQuestionBtn.addEventListener('click', () => this.nextQuestion());
+        this.answerBtn.addEventListener('click', () => this.showAnswerSection());
+
+        // ゲーム用の弦選択ボタン
+        this.gameStringButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (!this.gameActive) return;
+                this.userAnswer = btn.dataset.string;
+                this.checkAnswer();
+            });
+        });
+    }
+
+    switchMode(mode) {
+        this.currentMode = mode;
+        
+        if (mode === 'tuner') {
+            this.tunerModeBtn.classList.add('active');
+            this.gameModeBtn.classList.remove('active');
+            this.tunerContainer.style.display = 'block';
+            this.gameContainer.style.display = 'none';
+            if (this.gameActive) {
+                this.stopGame();
+            }
+        } else {
+            this.tunerModeBtn.classList.remove('active');
+            this.gameModeBtn.classList.add('active');
+            this.tunerContainer.style.display = 'none';
+            this.gameContainer.style.display = 'block';
+            if (this.isRunning) {
+                this.stop();
+            }
+        }
     }
 
     async start() {
@@ -225,10 +294,12 @@ class GuitarTuner {
         
         if (audioLevel < 0.005) {
             // 音声が検出されない場合
-            this.frequencyDisplay.textContent = '-- Hz';
-            this.noteDisplay.textContent = '--';
-            this.tuningStatus.textContent = '音を検出できません';
-            this.needle.style.transform = 'translateX(0%)';
+            if (this.currentMode === 'tuner') {
+                this.frequencyDisplay.textContent = '-- Hz';
+                this.noteDisplay.textContent = '--';
+                this.tuningStatus.textContent = '音を検出できません';
+                this.needle.style.transform = 'translateX(0%)';
+            }
         } else {
             // 周波数を検出（FFTベースと自己相関の両方を試す）
             let frequency = this.detectFrequencyFFT(this.frequencyDataArray, this.audioContext.sampleRate);
@@ -239,12 +310,19 @@ class GuitarTuner {
             }
             
             if (frequency > 0 && frequency >= 50 && frequency <= 2000) {
-                this.updateDisplay(frequency);
+                if (this.currentMode === 'tuner') {
+                    this.updateDisplay(frequency);
+                } else if (this.currentMode === 'game' && this.gameActive) {
+                    // ゲームモードでは検出された周波数を保存
+                    this.detectedFrequency = frequency;
+                }
             } else {
-                this.frequencyDisplay.textContent = '-- Hz';
-                this.noteDisplay.textContent = '--';
-                this.tuningStatus.textContent = '周波数を検出中...';
-                this.needle.style.transform = 'translateX(0%)';
+                if (this.currentMode === 'tuner') {
+                    this.frequencyDisplay.textContent = '-- Hz';
+                    this.noteDisplay.textContent = '--';
+                    this.tuningStatus.textContent = '周波数を検出中...';
+                    this.needle.style.transform = 'translateX(0%)';
+                }
             }
         }
 
@@ -470,6 +548,151 @@ class GuitarTuner {
             this.tuningStatus.textContent = cents > 0 ? '↑↑ 高すぎます' : '↓↓ 低すぎます';
             this.tuningStatus.className = 'tuning-status bad';
         }
+    }
+
+    // ゲームモード関連のメソッド
+    async startGame() {
+        try {
+            // マイクが開始されていない場合は開始
+            if (!this.isRunning) {
+                await this.start();
+            }
+            
+            if (!this.isRunning) {
+                this.gameStatus.innerHTML = '<p class="error">マイクを開始できませんでした</p>';
+                return;
+            }
+
+            this.gameActive = true;
+            this.correctCount = 0;
+            this.totalCount = 0;
+            this.updateScore();
+            this.nextQuestion();
+        } catch (error) {
+            console.error('ゲーム開始エラー:', error);
+            this.gameStatus.innerHTML = '<p class="error">ゲームを開始できませんでした</p>';
+        }
+    }
+
+    stopGame() {
+        this.gameActive = false;
+        this.gameAnswerSection.style.display = 'none';
+        this.gameResult.style.display = 'none';
+        this.nextQuestionBtn.style.display = 'none';
+        this.answerBtn.style.display = 'none';
+        this.startGameBtn.style.display = 'block';
+        this.gameStatus.innerHTML = '<p>ゲームを開始してください</p>';
+    }
+
+    nextQuestion() {
+        // ランダムに弦を選択
+        const strings = Object.keys(GUITAR_STRINGS);
+        this.targetString = strings[Math.floor(Math.random() * strings.length)];
+        
+        // UI更新
+        const stringNames = {
+            'E4': '1弦 (E)',
+            'B3': '2弦 (B)',
+            'G3': '3弦 (G)',
+            'D3': '4弦 (D)',
+            'A2': '5弦 (A)',
+            'E2': '6弦 (E)'
+        };
+        
+        this.targetStringDisplay.textContent = stringNames[this.targetString];
+        this.gameStatus.innerHTML = '<p class="success">この弦を弾いてください</p>';
+        this.gameAnswerSection.style.display = 'none';
+        this.gameResult.style.display = 'none';
+        this.nextQuestionBtn.style.display = 'none';
+        this.answerBtn.style.display = 'block';
+        this.userAnswer = null;
+        this.detectedFrequency = 0;
+    }
+
+    showAnswerSection() {
+        if (this.detectedFrequency === 0) {
+            this.gameStatus.innerHTML = '<p class="error">音が検出されていません。もう一度弾いてください。</p>';
+            return;
+        }
+
+        this.gameAnswerSection.style.display = 'block';
+        this.answerBtn.style.display = 'none';
+        this.gameStatus.innerHTML = '<p>どの弦を弾きましたか？選択してください</p>';
+    }
+
+    checkAnswer() {
+        if (!this.userAnswer || !this.targetString) return;
+
+        this.totalCount++;
+        const isCorrect = this.userAnswer === this.targetString;
+        
+        if (isCorrect) {
+            this.correctCount++;
+        }
+
+        // 結果を表示
+        this.showResult(isCorrect);
+        this.updateScore();
+        
+        // 次の問題ボタンを表示
+        this.nextQuestionBtn.style.display = 'block';
+        this.gameAnswerSection.style.display = 'none';
+    }
+
+    showResult(isCorrect) {
+        this.gameResult.style.display = 'block';
+        
+        if (isCorrect) {
+            this.resultMessage.innerHTML = '<div class="result-correct">✓ 正解！</div>';
+            this.resultMessage.className = 'result-message correct';
+        } else {
+            const correctString = {
+                'E4': '1弦 (E)',
+                'B3': '2弦 (B)',
+                'G3': '3弦 (G)',
+                'D3': '4弦 (D)',
+                'A2': '5弦 (A)',
+                'E2': '6弦 (E)'
+            };
+            this.resultMessage.innerHTML = `<div class="result-incorrect">✗ 不正解</div><div class="correct-answer">正解は ${correctString[this.targetString]} でした</div>`;
+            this.resultMessage.className = 'result-message incorrect';
+        }
+
+        // 検出された周波数を表示
+        const detectedString = this.frequencyToString(this.detectedFrequency);
+        this.detectedFrequencyDisplay.textContent = `検出された周波数: ${this.detectedFrequency.toFixed(2)} Hz (${detectedString})`;
+    }
+
+    frequencyToString(frequency) {
+        // 周波数から最も近い弦を判定
+        let closestString = null;
+        let minDiff = Infinity;
+
+        for (const [string, freq] of Object.entries(GUITAR_STRINGS)) {
+            const diff = Math.abs(frequency - freq);
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestString = string;
+            }
+        }
+
+        const stringNames = {
+            'E4': '1弦 (E)',
+            'B3': '2弦 (B)',
+            'G3': '3弦 (G)',
+            'D3': '4弦 (D)',
+            'A2': '5弦 (A)',
+            'E2': '6弦 (E)'
+        };
+
+        return closestString ? stringNames[closestString] : '不明';
+    }
+
+    updateScore() {
+        this.correctCountDisplay.textContent = this.correctCount;
+        this.totalCountDisplay.textContent = this.totalCount;
+        const accuracy = this.totalCount > 0 ? Math.round((this.correctCount / this.totalCount) * 100) : 0;
+        this.accuracyDisplay.textContent = accuracy + '%';
     }
 }
 
