@@ -48,6 +48,30 @@ class GuitarTuner {
             this.resizeCanvas();
             window.addEventListener('resize', () => this.resizeCanvas());
         }
+
+        // ページ読み込み時に環境をチェック
+        this.checkEnvironment();
+    }
+
+    checkEnvironment() {
+        // HTTPS接続の確認
+        const isSecure = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        
+        if (!isSecure) {
+            this.status.innerHTML = '<p class="error">⚠️ HTTPS接続が必要です。GitHub Pagesは自動的にHTTPSで提供されます。URLがhttps://で始まっているか確認してください。</p>';
+            this.startBtn.disabled = true;
+            return;
+        }
+
+        // getUserMediaのサポート確認
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            this.status.innerHTML = '<p class="error">⚠️ お使いのブラウザはマイクアクセスをサポートしていません。最新のブラウザ（Chrome、Firefox、Edge、Safari）をご使用ください。</p>';
+            this.startBtn.disabled = true;
+            return;
+        }
+
+        // 初期メッセージ
+        this.status.innerHTML = '<p>マイクを開始してください</p>';
     }
 
     resizeCanvas() {
@@ -73,6 +97,19 @@ class GuitarTuner {
 
     async start() {
         try {
+            // HTTPS接続の再確認
+            const isSecure = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            if (!isSecure) {
+                this.status.innerHTML = '<p class="error">⚠️ HTTPS接続が必要です。現在のURL: ' + window.location.href + '<br>GitHub PagesのURLがhttps://で始まっているか確認してください。</p>';
+                return;
+            }
+
+            // getUserMediaのサポート確認
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                this.status.innerHTML = '<p class="error">⚠️ お使いのブラウザはマイクアクセスをサポートしていません。</p>';
+                return;
+            }
+
             // マイクへのアクセスを要求
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 audio: {
@@ -108,8 +145,37 @@ class GuitarTuner {
             this.analyze();
         } catch (error) {
             console.error('マイクアクセスエラー:', error);
-            this.status.innerHTML = '<p class="error">✗ マイクへのアクセスが拒否されました</p>';
+            this.handleMicrophoneError(error);
         }
+    }
+
+    handleMicrophoneError(error) {
+        let errorMessage = '';
+        
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            errorMessage = '✗ マイクへのアクセスが拒否されました。<br>' +
+                          '1. ブラウザのアドレスバーでマイクのアイコンをクリック<br>' +
+                          '2. マイクの許可を選択してください<br>' +
+                          '3. ページを再読み込みして再度お試しください';
+        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+            errorMessage = '✗ マイクが見つかりません。<br>' +
+                          'マイクが接続されているか確認してください。';
+        } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+            errorMessage = '✗ マイクが使用中です。<br>' +
+                          '他のアプリケーションでマイクを使用していないか確認してください。';
+        } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
+            errorMessage = '✗ マイクの設定がサポートされていません。<br>' +
+                          '別のブラウザでお試しください。';
+        } else if (error.name === 'SecurityError') {
+            errorMessage = '✗ セキュリティエラーが発生しました。<br>' +
+                          'HTTPS接続（https://）でアクセスしているか確認してください。<br>' +
+                          '現在のURL: ' + window.location.href;
+        } else {
+            errorMessage = '✗ マイクアクセスエラー: ' + (error.message || error.name || '不明なエラー') + '<br>' +
+                          'ブラウザのコンソールで詳細を確認してください。';
+        }
+        
+        this.status.innerHTML = '<p class="error">' + errorMessage + '</p>';
     }
 
     stop() {
